@@ -7,10 +7,12 @@ Aplicação de flashcards com React (CDN) e Tailwind, backend em PHP + MySQL. Vi
 - Servir este diretório em `http://localhost/flashcards/` (padrão do XAMPP htdocs).
 
 ### Estrutura
-- `index.html` — SPA React/Tailwind.
+- `index.html` — SPA React/Tailwind; só mantém o `root` e importa os componentes.
+- `components/` — Componentes React sem JSX (usando `React.createElement` via alias `e`) — App, Header, GroupForm, GroupList, CardForm, FlashcardViewer, Status, utils/config.
 - `php/api.php` — API para criar/listar grupos e cards (upload de imagem).
 - `php/setup.php` — Cria DB e tabelas automaticamente.
 - `photos/` — Pasta para imagens das respostas (upload).
+- `docs/` — Documentação complementar; inclui `AI_explanation.md` (resumo técnico para outra IA sobre arquitetura, API, banco, UX e como evoluir).
 
 ### Setup rápido
 1) Ajuste credenciais do MySQL em `php/api.php` e `php/setup.php` se necessário (`$dbUser`, `$dbPass`, host/porta).  
@@ -29,3 +31,4 @@ Aplicação de flashcards com React (CDN) e Tailwind, backend em PHP + MySQL. Vi
 - A API responde JSON; erros vêm como `{ error: "..."} `.  
 - Tipos de imagem aceitos: jpeg, png, gif, webp.  
 - Os cards de um grupo são listados em ordem de criação (mais recente primeiro); o viewer embaralha quando a opção está ligada.
+- Não há build step: scripts são carregados via CDN e componentes usam `e(...)` (sem JSX).
