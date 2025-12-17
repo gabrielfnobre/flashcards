@@ -5,7 +5,8 @@ $dbName = 'flashcards_db';
 $dbHost = 'localhost';
 $dbUser = 'root';      // ajuste conforme seu MySQL local
 $dbPass = '';
-$uploadDir = __DIR__ . '/photos';
+$rootDir = dirname(__DIR__);
+$uploadDir = $rootDir . '/photos';
 
 $options = [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
