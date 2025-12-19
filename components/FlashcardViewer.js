@@ -128,7 +128,7 @@ window.FlashcardViewer = ({ cards, currentIndex, onPrev, onNext, shuffleOn, onSh
                         "p",
                         {
                           className:
-                            "text-2xl font-semibold text-slate-50 leading-tight whitespace-pre-line",
+                            "text-2xl font-semibold text-slate-50 leading-tight whitespace-pre-line text-left",
                         },
                         card.answer || "Sem resposta de texto."
                       )
