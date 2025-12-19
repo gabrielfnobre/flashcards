@@ -1,3 +1,6 @@
+/**
+ * Cabeçalho principal da aplicação, com título e "badges" de tecnologia/tema.
+ */
 window.Header = () =>
   e(
     "header",

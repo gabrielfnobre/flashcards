@@ -9,7 +9,7 @@ Aplicação de flashcards com React (CDN) e Tailwind, backend em PHP + MySQL. Vi
 ### Estrutura
 - `index.html` — SPA React/Tailwind; só mantém o `root` e importa os componentes.
 - `components/` — Componentes React sem JSX (usando `React.createElement` via alias `e`) — App, Header, GroupForm, GroupList, CardForm, FlashcardViewer, Status, utils/config.
-- `php/api.php` — API para criar/listar grupos e cards (upload de imagem).
+- `php/api.php` — API para criar/listar/editar/apagar grupos e cards (inclui upload de imagem).
 - `php/setup.php` — Cria DB e tabelas automaticamente.
 - `photos/` — Pasta para imagens das respostas (upload).
 - `docs/` — Documentação complementar; inclui `AI_explanation.md` (resumo técnico para outra IA sobre arquitetura, API, banco, UX e como evoluir).
@@ -25,10 +25,13 @@ Aplicação de flashcards com React (CDN) e Tailwind, backend em PHP + MySQL. Vi
 2) Crie um grupo (nome e descrição opcional).  
 3) Com o grupo selecionado, cadastre cards: pergunta + resposta em texto ou imagem.  
 4) Estude em tela cheia: clique em “Ver resposta” para virar; use “Embaralhar” para ordem aleatória; navegue com Anterior/Próximo.  
-5) Imagens enviadas são salvas em `photos/` e exibidas ocupando o card inteiro na resposta.
+5) Durante o estudo, use os botões do card para **Editar** (pergunta/resposta de texto) ou **Apagar** o flashcard atual.  
+6) Na lista de grupos, use o botão “Apagar grupo selecionado” para remover o grupo inteiro e todos os seus cards.  
+7) Imagens enviadas são salvas em `photos/` e exibidas ocupando o card inteiro na resposta.
 
 ### Notas
 - A API responde JSON; erros vêm como `{ error: "..."} `.  
 - Tipos de imagem aceitos: jpeg, png, gif, webp.  
 - Os cards de um grupo são listados em ordem de criação (mais recente primeiro); o viewer embaralha quando a opção está ligada.
+- A API também expõe ações de manutenção: `update_card`, `delete_card` e `delete_group` (ver detalhes em `docs/AI_explanation.md`).
 - Não há build step: scripts são carregados via CDN e componentes usam `e(...)` (sem JSX).

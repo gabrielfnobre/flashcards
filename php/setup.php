@@ -1,5 +1,8 @@
 <?php
-// Cria banco e tabelas automaticamente. Execute uma vez em localhost.
+/**
+ * Script de instalação: cria o banco `flashcards_db` e as tabelas necessárias.
+ * Execute uma vez em localhost para preparar o ambiente.
+ */
 $dbName = 'flashcards_db';
 $dbHost = 'localhost';
 $dbUser = 'root';      // ajuste se você usa outra senha/usuário no MySQL local

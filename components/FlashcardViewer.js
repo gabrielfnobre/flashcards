@@ -1,6 +1,23 @@
 const { useState: useStateViewer, useEffect: useEffectViewer } = React;
 
-window.FlashcardViewer = ({ cards, currentIndex, onPrev, onNext, shuffleOn, onShuffleToggle }) => {
+/**
+ * Área principal de estudo em tela cheia: exibe o card atual, permite navegar,
+ * embaralhar, virar para ver a resposta, editar e apagar o flashcard.
+ * @param {{ cards:any[], currentIndex:number, onPrev:()=>void, onNext:()=>void,
+ *          shuffleOn:boolean, onShuffleToggle:(v:boolean)=>void,
+ *          onEditCard?:(id:number, updates:{question?:string,answer?:string})=>void,
+ *          onDeleteCard?:(id:number)=>void }} props
+ */
+window.FlashcardViewer = ({
+  cards,
+  currentIndex,
+  onPrev,
+  onNext,
+  shuffleOn,
+  onShuffleToggle,
+  onEditCard,
+  onDeleteCard,
+}) => {
   const [showAnswer, setShowAnswer] = useStateViewer(false);
 
   useEffectViewer(() => {
@@ -141,12 +158,54 @@ window.FlashcardViewer = ({ cards, currentIndex, onPrev, onNext, shuffleOn, onSh
         { className: "p-6 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between" },
         e("div", { className: "text-sm text-slate-400" }, "Clique para virar e revelar."),
         e(
-          "button",
-          {
-            onClick: () => setShowAnswer((v) => !v),
-            className: "px-4 py-2 rounded-lg bg-gradient-to-r from-accent to-accent2 text-slate-900 font-semibold shadow-glow",
-          },
-          showAnswer ? "Mostrar pergunta" : "Ver resposta"
+          "div",
+          { className: "flex items-center gap-3" },
+          e(
+            "button",
+            {
+              onClick: () => setShowAnswer((v) => !v),
+              className:
+                "px-4 py-2 rounded-lg bg-gradient-to-r from-accent to-accent2 text-slate-900 font-semibold shadow-glow",
+            },
+            showAnswer ? "Mostrar pergunta" : "Ver resposta"
+          ),
+          e(
+            "button",
+            {
+              onClick: () => {
+                if (!onEditCard) return;
+                const newQuestion = window.prompt("Editar pergunta:", card.question || "");
+                if (newQuestion === null) return;
+                if (!newQuestion.trim()) {
+                  alert("Pergunta não pode ser vazia.");
+                  return;
+                }
+                const newAnswer = window.prompt(
+                  "Editar resposta em texto (a imagem, se existir, será mantida):",
+                  card.answer || ""
+                );
+                if (newAnswer === null) return;
+                onEditCard(card.id, { question: newQuestion, answer: newAnswer });
+              },
+              className:
+                "px-3 py-2 rounded-lg border border-slate-600 text-xs text-slate-200 hover:bg-slate-800/80 transition",
+            },
+            "Editar"
+          ),
+          e(
+            "button",
+            {
+              onClick: () => {
+                if (!onDeleteCard) return;
+                if (confirm("Tem certeza que deseja apagar este card?")) {
+                  onDeleteCard(card.id);
+                }
+              },
+              className:
+                "px-3 py-2 rounded-lg border border-rose-500/60 text-xs text-rose-300 bg-rose-500/5 hover:bg-rose-500/10 transition",
+            },
+            "Apagar"
+          )
         )
       )
     )

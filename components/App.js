@@ -1,5 +1,8 @@
 const { useEffect: useEffectApp, useState: useStateApp, useCallback: useCallbackApp } = React;
 
+/**
+ * Componente raiz da SPA: gerencia grupos, cards, estado de estudo e integração com a API.
+ */
 window.App = () => {
   const [groups, setGroups] = useStateApp([]);
   const [selectedGroup, setSelectedGroup] = useStateApp(null);
@@ -67,6 +70,54 @@ window.App = () => {
     setCurrentIndex((idx) => (idx + 1) % displayCards.length);
   };
 
+  const handleEditCard = async (id, updates) => {
+    try {
+      const data = await fetchJson(window.API_BASE + "?action=update_card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      const updated = data.card;
+      setCards((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      setStatus({ type: "success", message: "Card atualizado." });
+    } catch (err) {
+      setStatus({ type: "error", message: err.message });
+    }
+  };
+
+  const handleDeleteCard = async (id) => {
+    try {
+      await fetchJson(window.API_BASE + "?action=delete_card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      setCards((prev) => prev.filter((c) => c.id !== id));
+      setStatus({ type: "success", message: "Card removido." });
+    } catch (err) {
+      setStatus({ type: "error", message: err.message });
+    }
+  };
+
+  const handleDeleteGroup = async (id) => {
+    try {
+      await fetchJson(window.API_BASE + "?action=delete_group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      setGroups((prev) => prev.filter((g) => g.id !== id));
+      if (selectedGroup && selectedGroup.id === id) {
+        const remaining = groups.filter((g) => g.id !== id);
+        setSelectedGroup(remaining[0] || null);
+        setCards([]);
+      }
+      setStatus({ type: "success", message: "Grupo removido." });
+    } catch (err) {
+      setStatus({ type: "error", message: err.message });
+    }
+  };
+
   return e(
     "div",
     { className: "pb-10" },
@@ -86,7 +137,12 @@ window.App = () => {
               setSelectedGroup(g);
             },
           }),
-          e(GroupList, { groups, selectedId: selectedGroup?.id, onSelect: handleSelectGroup }),
+          e(GroupList, {
+            groups,
+            selectedId: selectedGroup?.id,
+            onSelect: handleSelectGroup,
+            onDeleteGroup: handleDeleteGroup,
+          }),
           e(CardForm, { group: selectedGroup, onCreated: (card) => setCards((prev) => [card, ...prev]) }),
           e(Status, { status })
         ),
@@ -109,6 +165,8 @@ window.App = () => {
                 onNext: handleNext,
                 shuffleOn,
                 onShuffleToggle: setShuffleOn,
+                onEditCard: handleEditCard,
+                onDeleteCard: handleDeleteCard,
               })
         )
       )

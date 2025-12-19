@@ -1,4 +1,8 @@
-window.GroupList = ({ groups, selectedId, onSelect }) =>
+/**
+ * Lista lateral de grupos com seleção e remoção do grupo ativo.
+ * @param {{ groups: any[], selectedId: number|null, onSelect: (g:any)=>void, onDeleteGroup?: (id:number)=>void }} props
+ */
+window.GroupList = ({ groups, selectedId, onSelect, onDeleteGroup }) =>
   e(
     "div",
     { className: "bg-panel/70 border border-slate-800 rounded-2xl p-4" },
@@ -44,5 +48,24 @@ window.GroupList = ({ groups, selectedId, onSelect }) =>
       groups.length === 0
         ? e("p", { className: "text-sm text-slate-500" }, "Nenhum grupo ainda.")
         : null
-    )
-  );
+    ),
+    selectedId && onDeleteGroup
+      ? e(
+          "div",
+          { className: "mt-3 flex justify-end" },
+          e(
+            "button",
+            {
+              className:
+                "px-3 py-1.5 text-xs rounded-lg border border-rose-500/60 text-rose-300 bg-rose-500/5 hover:bg-rose-500/10 transition",
+              onClick: () => {
+                if (confirm("Tem certeza que deseja apagar este grupo e todos os seus cards?")) {
+                  onDeleteGroup(selectedId);
+                }
+              },
+            },
+            "Apagar grupo selecionado"
+          )
+        )
+      : null
+    );

@@ -1,5 +1,9 @@
 const { useState: useStateCardForm } = React;
 
+/**
+ * Formulário de criação de flashcards (texto e/ou imagem) para um grupo selecionado.
+ * @param {{ group: any|null, onCreated: (card:any)=>void }} props
+ */
 window.CardForm = ({ group, onCreated }) => {
   const [question, setQuestion] = useStateCardForm("");
   const [answer, setAnswer] = useStateCardForm("");

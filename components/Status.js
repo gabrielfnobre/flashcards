@@ -1,5 +1,9 @@
 const { useMemo } = React;
 
+/**
+ * Banner de status de requisições (sucesso/erro) exibido nos formulários.
+ * @param {{ status: { type: 'error'|'success', message: string } | null }} props
+ */
 window.Status = ({ status }) => {
   const classes = useMemo(() => {
     if (!status) return "";

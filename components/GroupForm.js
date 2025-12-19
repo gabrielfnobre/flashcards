@@ -1,5 +1,9 @@
 const { useState } = React;
 
+/**
+ * Formulário de criação de grupos de flashcards.
+ * @param {{ onCreated: (group: any) => void }} props Callback chamado com o grupo criado.
+ */
 window.GroupForm = ({ onCreated }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

@@ -8,11 +8,21 @@ $dbPass = '';
 $rootDir = dirname(__DIR__);
 $uploadDir = $rootDir . '/photos';
 
+/**
+ * Opções padrão de conexão PDO (modo exceção + fetch associativo).
+ * @var array<string,mixed>
+ */
 $options = [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ];
 
+/**
+ * Envia uma resposta JSON padronizada e encerra a execução.
+ *
+ * @param mixed $data Dados a serem serializados em JSON.
+ * @param int   $code Código HTTP (padrão 200).
+ */
 function respond($data, int $code = 200): void
 {
     http_response_code($code);
@@ -20,6 +30,12 @@ function respond($data, int $code = 200): void
     exit;
 }
 
+/**
+ * Garante que o banco e as tabelas existam (idempotente).
+ *
+ * @param PDO    $pdo     Conexão com o servidor MySQL (sem database selecionado).
+ * @param string $dbName  Nome do banco a ser criado/utilizado.
+ */
 function ensureDatabase(PDO $pdo, string $dbName): void
 {
     $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
@@ -159,6 +175,113 @@ switch ($action) {
                     'created_at' => date('Y-m-d H:i:s')
                 ]
             ], 201);
+        } catch (Throwable $e) {
+            respond(['error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'update_card':
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $id = (int) ($payload['id'] ?? 0);
+        $question = isset($payload['question']) ? trim((string) $payload['question']) : null;
+        $answer = isset($payload['answer']) ? trim((string) $payload['answer']) : null;
+
+        if (!$id) {
+            respond(['error' => 'id é obrigatório.'], 422);
+        }
+        if ($question !== null && $question === '') {
+            respond(['error' => 'Pergunta não pode ser vazia.'], 422);
+        }
+
+        try {
+            // Busca card atual para mesclar campos
+            $stmt = $pdo->prepare("SELECT * FROM `cards` WHERE id = :id");
+            $stmt->execute([':id' => $id]);
+            $current = $stmt->fetch();
+            if (!$current) {
+                respond(['error' => 'Card não encontrado.'], 404);
+            }
+
+            $newQuestion = $question !== null ? $question : $current['question'];
+            $newAnswer = $answer !== null ? $answer : $current['answer'];
+
+            $upd = $pdo->prepare("UPDATE `cards` SET question = :q, answer = :a WHERE id = :id");
+            $upd->execute([
+                ':q' => $newQuestion,
+                ':a' => $newAnswer,
+                ':id' => $id,
+            ]);
+
+            $stmt = $pdo->prepare("SELECT id, group_id, question, answer, answer_image, created_at FROM `cards` WHERE id = :id");
+            $stmt->execute([':id' => $id]);
+            $updated = $stmt->fetch();
+
+            respond(['ok' => true, 'card' => $updated]);
+        } catch (Throwable $e) {
+            respond(['error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'delete_card':
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $id = (int) ($payload['id'] ?? 0);
+        if (!$id) {
+            respond(['error' => 'id é obrigatório.'], 422);
+        }
+
+        try {
+            // Recupera caminho da imagem para remoção física
+            $stmt = $pdo->prepare("SELECT answer_image FROM `cards` WHERE id = :id");
+            $stmt->execute([':id' => $id]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                respond(['error' => 'Card não encontrado.'], 404);
+            }
+
+            $del = $pdo->prepare("DELETE FROM `cards` WHERE id = :id");
+            $del->execute([':id' => $id]);
+
+            if (!empty($row['answer_image'])) {
+                $imgPath = $rootDir . DIRECTORY_SEPARATOR . $row['answer_image'];
+                if (is_file($imgPath)) {
+                    @unlink($imgPath);
+                }
+            }
+
+            respond(['ok' => true]);
+        } catch (Throwable $e) {
+            respond(['error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'delete_group':
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $id = (int) ($payload['id'] ?? 0);
+        if (!$id) {
+            respond(['error' => 'id é obrigatório.'], 422);
+        }
+
+        try {
+            // Remove imagens dos cards do grupo antes de apagar
+            $stmt = $pdo->prepare("SELECT answer_image FROM `cards` WHERE group_id = :gid");
+            $stmt->execute([':gid' => $id]);
+            while ($row = $stmt->fetch()) {
+                if (!empty($row['answer_image'])) {
+                    $imgPath = $rootDir . DIRECTORY_SEPARATOR . $row['answer_image'];
+                    if (is_file($imgPath)) {
+                        @unlink($imgPath);
+                    }
+                }
+            }
+
+            $del = $pdo->prepare("DELETE FROM `groups` WHERE id = :id");
+            $del->execute([':id' => $id]);
+
+            if ($del->rowCount() === 0) {
+                respond(['error' => 'Grupo não encontrado.'], 404);
+            }
+
+            respond(['ok' => true]);
         } catch (Throwable $e) {
             respond(['error' => $e->getMessage()], 500);
         }
