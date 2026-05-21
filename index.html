@@ -31,6 +31,52 @@
   <style>
     * { font-family: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif; }
     body { background: radial-gradient(circle at 20% 20%, rgba(56,189,248,0.08), transparent 35%), radial-gradient(circle at 80% 0%, rgba(129,140,248,0.1), transparent 30%), #0b1220; }
+
+    /* ── RichEditor: editor contenteditable ─────────────────────────── */
+    [contenteditable]:focus { outline: none; }
+    [contenteditable]:empty { min-height: inherit; }
+
+    /* Imagens coladas inline no editor */
+    .rich-img {
+      max-width: 100%;
+      border-radius: 0.5rem;
+      margin: 0.35rem 0;
+      display: block;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    /* ── rich-content: renderização nos cards de estudo ─────────────── */
+    .rich-content {
+      max-width: 100%;
+      line-height: 1.65;
+      text-align: left;
+      color: #f1f5f9; /* slate-100 */
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+    .rich-content img {
+      max-width: 100%;
+      border-radius: 0.75rem;
+      margin: 0.6rem auto;
+      display: block;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .rich-content p   { margin: 0.2rem 0; }
+    .rich-content br  { display: block; }
+    .rich-content strong, .rich-content b { font-weight: 700; }
+    .rich-content em, .rich-content i     { font-style: italic; }
+    .rich-content ul, .rich-content ol    { padding-left: 1.4rem; margin: 0.3rem 0; }
+    .rich-content li  { margin: 0.15rem 0; }
+    .rich-content code {
+      background: rgba(34, 211, 238, 0.1);
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      border-radius: 0.3rem;
+      padding: 0.1em 0.35em;
+      font-family: monospace;
+      font-size: 0.9em;
+      font-weight: 400;
+    }
   </style>
 </head>
 <body class="min-h-screen text-slate-100">
@@ -45,7 +91,9 @@
   <script src="components/Header.js"></script>
   <script src="components/GroupForm.js"></script>
   <script src="components/GroupList.js"></script>
+  <script src="components/RichEditor.js"></script>
   <script src="components/CardForm.js"></script>
+  <script src="components/CardEditor.js"></script>
   <script src="components/FlashcardViewer.js"></script>
   <script src="components/App.js"></script>
   <script>

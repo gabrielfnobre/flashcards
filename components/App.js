@@ -1,17 +1,20 @@
 const { useEffect: useEffectApp, useState: useStateApp, useCallback: useCallbackApp } = React;
 
 /**
- * Componente raiz da SPA: gerencia grupos, cards, estado de estudo e integração com a API.
+ * Componente raiz da SPA: gerencia grupos, cards, estado de estudo,
+ * edição de cards (via CardEditor overlay) e integração com a API.
  */
 window.App = () => {
-  const [groups, setGroups] = useStateApp([]);
+  const [groups,        setGroups]        = useStateApp([]);
   const [selectedGroup, setSelectedGroup] = useStateApp(null);
-  const [cards, setCards] = useStateApp([]);
-  const [displayCards, setDisplayCards] = useStateApp([]);
-  const [currentIndex, setCurrentIndex] = useStateApp(0);
-  const [shuffleOn, setShuffleOn] = useStateApp(true);
-  const [status, setStatus] = useStateApp(null);
-  const [loadingCards, setLoadingCards] = useStateApp(false);
+  const [cards,         setCards]         = useStateApp([]);
+  const [displayCards,  setDisplayCards]  = useStateApp([]);
+  const [currentIndex,  setCurrentIndex]  = useStateApp(0);
+  const [shuffleOn,     setShuffleOn]     = useStateApp(true);
+  const [status,        setStatus]        = useStateApp(null);
+  const [loadingCards,  setLoadingCards]  = useStateApp(false);
+  const [editingCard,   setEditingCard]   = useStateApp(null);
+  const [showCreator,   setShowCreator]   = useStateApp(false);
 
   const loadGroups = useCallbackApp(async () => {
     try {
@@ -70,19 +73,29 @@ window.App = () => {
     setCurrentIndex((idx) => (idx + 1) % displayCards.length);
   };
 
-  const handleEditCard = async (id, updates) => {
-    try {
-      const data = await fetchJson(window.API_BASE + "?action=update_card", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, ...updates }),
-      });
-      const updated = data.card;
-      setCards((prev) => prev.map((c) => (c.id === id ? updated : c)));
-      setStatus({ type: "success", message: "Card atualizado." });
-    } catch (err) {
-      setStatus({ type: "error", message: err.message });
-    }
+  // Abre o editor de card em overlay
+  const handleOpenEditor = (card) => {
+    setEditingCard(card);
+  };
+
+  // Fecha o editor sem salvar
+  const handleCloseEditor = () => {
+    setEditingCard(null);
+  };
+
+  // Salva via multipart FormData (suporta imagens)
+  const handleSaveCard = async (formData) => {
+    const res  = await fetch(window.API_BASE + "?action=update_card", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erro ao atualizar.");
+
+    const updated = data.card;
+    setCards((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setStatus({ type: "success", message: "Card atualizado." });
+    setEditingCard(null);
   };
 
   const handleDeleteCard = async (id) => {
@@ -143,7 +156,21 @@ window.App = () => {
             onSelect: handleSelectGroup,
             onDeleteGroup: handleDeleteGroup,
           }),
-          e(CardForm, { group: selectedGroup, onCreated: (card) => setCards((prev) => [card, ...prev]) }),
+          // Botão para abrir o modal de criação
+          e(
+            "button",
+            {
+              onClick: () => setShowCreator(true),
+              disabled: !selectedGroup,
+              className:
+                "w-full py-3 rounded-2xl border border-dashed border-slate-700 " +
+                "text-slate-300 hover:border-accent/60 hover:text-accent hover:bg-accent/5 " +
+                "transition-all text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed",
+            },
+            selectedGroup
+              ? "+ Gerar novo card"
+              : "+ Gerar novo card  (escolha um grupo)"
+          ),
           e(Status, { status })
         ),
         e(
@@ -165,11 +192,30 @@ window.App = () => {
                 onNext: handleNext,
                 shuffleOn,
                 onShuffleToggle: setShuffleOn,
-                onEditCard: handleEditCard,
+                onOpenEditor: handleOpenEditor,
                 onDeleteCard: handleDeleteCard,
               })
         )
       )
-    )
+    ),
+
+    // ── Modal de criação ────────────────────────────────────────────────
+    showCreator &&
+      e(CardForm, {
+        group: selectedGroup,
+        onCreated: (card) => {
+          setCards((prev) => [card, ...prev]);
+          setStatus({ type: "success", message: "Card criado!" });
+        },
+        onClose: () => setShowCreator(false),
+      }),
+
+    // ── Modal de edição ─────────────────────────────────────────────────
+    editingCard &&
+      e(CardEditor, {
+        card: editingCard,
+        onSave: handleSaveCard,
+        onClose: handleCloseEditor,
+      })
   );
 };

@@ -1,17 +1,22 @@
-const { useState: useStateCardForm } = React;
+const { useState: useStateEditor } = React;
 
 /**
- * Modal de criação de flashcard (texto rico + imagens inline via Ctrl+V).
- * Abre como overlay sobre a página, igual ao CardEditor.
+ * Editor de flashcard em tela cheia (overlay).
+ * Usa RichEditor para pergunta e resposta: você pode escrever texto e colar
+ * imagens com Ctrl+V — elas aparecem inline, junto com o texto.
  *
- * @param {{ group: any|null, onCreated: (card:any)=>void, onClose: ()=>void }} props
+ * @param {{ card: any, onSave: (formData: FormData) => Promise<void>, onClose: () => void }} props
  */
-window.CardForm = ({ group, onCreated, onClose }) => {
-  const [questionHtml, setQuestionHtml] = useStateCardForm('');
-  const [answerHtml,   setAnswerHtml]   = useStateCardForm('');
-  const [loading,      setLoading]      = useStateCardForm(false);
-  const [error,        setError]        = useStateCardForm(null);
-  const [formKey,      setFormKey]      = useStateCardForm(0);
+window.CardEditor = ({ card, onSave, onClose }) => {
+  const [questionHtml, setQuestionHtml] = useStateEditor(card.question || '');
+  const [answerHtml,   setAnswerHtml]   = useStateEditor(card.answer   || '');
+
+  // Imagens legadas (cards antigos com campo answer_image separado)
+  const [removeAnswerImage,   setRemoveAnswerImage]   = useStateEditor(false);
+  const [removeQuestionImage, setRemoveQuestionImage] = useStateEditor(false);
+
+  const [loading, setLoading] = useStateEditor(false);
+  const [error,   setError]   = useStateEditor(null);
 
   const hasContent = (html) => {
     if (!html) return false;
@@ -20,50 +25,60 @@ window.CardForm = ({ group, onCreated, onClose }) => {
     return hasImg || hasText;
   };
 
-  const submit = async () => {
-    if (!group) {
-      setError('Nenhum grupo selecionado. Feche e escolha um grupo antes.');
-      return;
-    }
+  const handleSave = async () => {
     if (!hasContent(questionHtml)) {
-      setError('Pergunta obrigatória.');
+      setError('Pergunta não pode ser vazia.');
       return;
     }
-    if (!hasContent(answerHtml)) {
-      setError('Informe uma resposta.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
+
+    const form = new FormData();
+    form.append('id',       card.id);
+    form.append('question', questionHtml);
+    form.append('answer',   answerHtml);
+    if (removeAnswerImage)   form.append('remove_answer_image',   '1');
+    if (removeQuestionImage) form.append('remove_question_image', '1');
+
     try {
-      const form = new FormData();
-      form.append('group_id', group.id);
-      form.append('question', questionHtml);
-      form.append('answer',   answerHtml);
-
-      const res  = await fetch(window.API_BASE + '?action=create_card', {
-        method: 'POST',
-        body: form,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao salvar.');
-
-      onCreated(data.card);
-      // Reset para permitir criar outro card sem fechar o modal
-      setFormKey((k) => k + 1);
-      setQuestionHtml('');
-      setAnswerHtml('');
-      setError({ type: 'success', message: 'Card criado! Crie outro ou feche.' });
+      await onSave(form);
     } catch (err) {
-      setError(err.message || err);
-    } finally {
+      setError(err.message);
       setLoading(false);
     }
   };
 
-  const isSuccessMsg = error && typeof error === 'object' && error.type === 'success';
-  const errorMsg     = error && typeof error === 'string' ? error : null;
+  // Exibe um card de imagem legada com opção de remover
+  const legacyImageCard = (src, onRemove) =>
+    e(
+      'div',
+      { className: 'flex items-start gap-3 p-3 bg-slate-900/60 rounded-xl border border-slate-700 mt-2' },
+      e('img', {
+        src,
+        alt: 'imagem legada',
+        className: 'max-h-24 rounded-lg object-contain border border-slate-700 bg-slate-900',
+      }),
+      e(
+        'div',
+        { className: 'flex-1 min-w-0' },
+        e('p', { className: 'text-xs text-slate-400 mb-1' }, 'Imagem existente'),
+        e('p', { className: 'text-xs text-slate-500 leading-snug' },
+          'Esta imagem foi adicionada anteriormente de forma separada. ' +
+          'Para substituí-la, remova-a e cole uma nova no campo acima.'
+        ),
+        e(
+          'button',
+          {
+            type: 'button',
+            onClick: onRemove,
+            className:
+              'mt-2 text-xs text-rose-400 hover:text-rose-300 border border-rose-500/40 ' +
+              'hover:border-rose-400/60 px-2 py-1 rounded-lg transition',
+          },
+          'Remover'
+        )
+      )
+    );
 
   return e(
     'div',
@@ -91,14 +106,8 @@ window.CardForm = ({ group, onCreated, onClose }) => {
         e(
           'div',
           null,
-          e('p', { className: 'text-xs uppercase tracking-[0.2em] text-slate-400' }, 'Novo card'),
-          e('h2', { className: 'text-xl font-semibold text-slate-50' }, 'Criar flashcard'),
-          group &&
-            e(
-              'p',
-              { className: 'text-xs text-accent mt-0.5' },
-              'Grupo: ' + group.name
-            )
+          e('p', { className: 'text-xs uppercase tracking-[0.2em] text-slate-400' }, 'Edição'),
+          e('h2', { className: 'text-xl font-semibold text-slate-50' }, 'Editar flashcard')
         ),
         e(
           'button',
@@ -124,12 +133,14 @@ window.CardForm = ({ group, onCreated, onClose }) => {
           null,
           e('label', { className: 'block text-sm font-semibold text-slate-300 mb-1.5' }, 'Pergunta'),
           e(RichEditor, {
-            key: 'q-' + formKey,
-            initialValue: '',
+            initialValue: card.question || '',
             onContentChange: setQuestionHtml,
-            placeholder: 'O que deseja lembrar?  (Cole imagem com Ctrl+V)',
+            placeholder: 'O que você quer perguntar?  (Cole imagem com Ctrl+V)',
             minHeight: '120px',
-          })
+          }),
+          // Imagem legada da pergunta
+          card.question_image && !removeQuestionImage &&
+            legacyImageCard(card.question_image, () => setRemoveQuestionImage(true))
         ),
 
         // Resposta
@@ -138,26 +149,18 @@ window.CardForm = ({ group, onCreated, onClose }) => {
           null,
           e('label', { className: 'block text-sm font-semibold text-slate-300 mb-1.5' }, 'Resposta'),
           e(RichEditor, {
-            key: 'a-' + formKey,
-            initialValue: '',
+            initialValue: card.answer || '',
             onContentChange: setAnswerHtml,
             placeholder: 'Escreva a resposta ou cole imagem com Ctrl+V.',
             minHeight: '150px',
-          })
+          }),
+          // Imagem legada da resposta
+          card.answer_image && !removeAnswerImage &&
+            legacyImageCard(card.answer_image, () => setRemoveAnswerImage(true))
         ),
 
-        // Feedback
-        isSuccessMsg &&
-          e(
-            'p',
-            {
-              className:
-                'text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/30 ' +
-                'rounded-xl px-4 py-3',
-            },
-            error.message
-          ),
-        errorMsg &&
+        // Erro
+        error &&
           e(
             'p',
             {
@@ -165,7 +168,7 @@ window.CardForm = ({ group, onCreated, onClose }) => {
                 'text-rose-400 text-sm bg-rose-500/10 border border-rose-500/30 ' +
                 'rounded-xl px-4 py-3',
             },
-            errorMsg
+            error
           )
       ),
 
@@ -174,7 +177,7 @@ window.CardForm = ({ group, onCreated, onClose }) => {
         'div',
         {
           className:
-            'flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-800 ' +
+            'flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-800 ' +
             'bg-slate-900/40 rounded-b-3xl flex-shrink-0',
         },
         e(
@@ -187,13 +190,13 @@ window.CardForm = ({ group, onCreated, onClose }) => {
               'px-5 py-2.5 rounded-xl border border-slate-700 text-slate-300 ' +
               'hover:text-slate-100 hover:border-slate-500 transition text-sm disabled:opacity-50',
           },
-          'Fechar'
+          'Cancelar'
         ),
         e(
           'button',
           {
             type: 'button',
-            onClick: submit,
+            onClick: handleSave,
             disabled: loading,
             className:
               'px-6 py-2.5 rounded-xl bg-gradient-to-r from-accent to-accent2 ' +
